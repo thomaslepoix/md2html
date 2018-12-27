@@ -2,6 +2,7 @@
 
 import argparse
 import re
+#import pathlib
 
 
 def parse_args():
@@ -15,9 +16,6 @@ def parse_args():
 
 
 def md2html_preserve_escaped(in_text):
-#	print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
-#		+'preserve_escaped input : '+in_text+'\n'
-#		+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 	in_text = re.sub(r'\\\\', r'MD2HTMLBACKSLASH', in_text, flags=re.M)
 	in_text = re.sub(r'\\`', r'MD2HTMLTICK', in_text, flags=re.M)
 	in_text = re.sub(r'\\\*', r'MD2HTMLASTERISK', in_text, flags=re.M)
@@ -33,14 +31,19 @@ def md2html_preserve_escaped(in_text):
 	in_text = re.sub(r'\\\-', r'MD2HTMLMINUS', in_text, flags=re.M)
 	in_text = re.sub(r'\\\.', r'MD2HTMLDOT', in_text, flags=re.M)
 	in_text = re.sub(r'\\!', r'MD2HTMLEXCLAMATION', in_text, flags=re.M)
-#	print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'
-#		+'preserve_escaped output : '+in_text+'\n'
-#		+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 	return in_text
 
 
-#code
+def md2html_code(in_text):
+	def re_code_lang(matchobj):
+		if matchobj.group(1):
+			return r'<pre><code class="language-'+matchobj.group(1)+'">'+matchobj.group(2)+'</code></pre>'
+		else:
+			return r'<pre><code>'+matchobj.group(2)+'</code></pre>'
 
+	in_text = re.sub(r'```([^\n]*)?\n(.*?)\n```', re_code_lang, in_text, flags=re.S)
+	in_text = re.sub(r'``?(.*?)``?', r'<pre><code>\g<1></code></pre>', in_text, flags=re.S)
+	# code -> MD2HTMLxPROTECTED ; dictionnaire x - code
 
 def md2html_headings(in_text):
 	in_text = re.sub(r'^([^\n#].*)\n(=+)$', r'<h1>\g<1></h1>', in_text, flags=re.M)
@@ -58,6 +61,20 @@ def md2html_emphasis(in_text, multiline):
 	in_text = re.sub(r'__(.*?)__|\*\*(.*?)\*\*', r'<strong>\g<1>\g<2></strong>', in_text, flags=eval('re.'+multiline))
 	in_text = re.sub(r'_(.*?)_|\*(.*?)\*', r'<em>\g<1>\g<2></em>', in_text, flags=eval('re.'+multiline))
 	return in_text
+
+
+#lists
+#(?<=\n)[-*+] ?(.*?)\n
+#(?<=\n)(\t|    )?[-*+] ?(.*?)\n
+#(?<=\n)((\t|    )?[-*+] ?.*?)\n?(?=\n(\t|    )?[^-*+])
+#https://regex101.com/r/x2pj7O/1
+
+#paragraphs
+
+
+def md2html_separators(in_text):
+	in_text = re.sub(r'^-{3,}$|^_{3,}$|^\*{3,}$', r'<hr>', in_text, flags=re.M)
+	in_text = re.sub(r' {2,}$', r'<br>', in_text, flags=re.M)
 
 
 def md2html_restore_escaped(in_text):
@@ -92,15 +109,23 @@ def main():
 			print('================================================================================')
 
 		in_text = md2html_preserve_escaped(in_text)
-	#	in_text = md2html_code(in_text)
+#		in_text = md2html_code(in_text)
 		in_text = md2html_headings(in_text)
 		in_text = md2html_emphasis(in_text, args.multiline_emphasis)
+		in_text = md2html_serapators(in_text)
 		in_text = md2html_restore_escaped(in_text)
 
 		if args.verbose:
 			print(in_text)
 
-	#	out_name = 
+		if args.template:
+			with open(args.template, encoding='utf-8') as temp_file:
+				in_text, n_match = re.subn(r'MD2HTMLTEMPLATE', in_text, temp_file.read(), flags=re.M)
+				if n_match != 1:
+					print("ERROR : "+args.template+" seems to be invalid.\n"
+						+"\tPlease ensure the template contain ONE time the string \"MD2HTMLTEMPLETE\".")
+
+#		out_name = 
 		with open(args.output+'test.html', 'w', encoding='utf-8') as out_file:
 			out_file.write(in_text)
 
