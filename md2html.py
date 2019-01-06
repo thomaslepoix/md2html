@@ -3,15 +3,31 @@
 import argparse
 import re
 #import pathlib
+#import os.path
 
 
 def parse_args():
 	parser = argparse.ArgumentParser(description='Simple markdown to HTML converter')
 	parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
 	parser.add_argument('-i', '--input', nargs='+', required=True, help='Input files or directory')
-	parser.add_argument('-o', '--output', nargs=1, default='./', help='Output directory')
+	parser.add_argument('-o', '--output', nargs=1, default=('./',), help='Output directory')
 	parser.add_argument('-t', '--template', nargs=1, help='HTML template file')
+	parser.add_argument('-r', '--recursive', action='store_true', help='Acess directories recursively')
 	parser.add_argument('-m', '--multiline-emphasis', action='store_const', const='S', default='M', help='Allow multiline emphasis (bold & italic)')
+
+	for inp in args.input:
+		if not os.path.exists(inp):
+			print('ERROR : '+inp+' does not exist')
+			exit(1)
+	if not os.path.exists(args.output) or not os.path.isdir(args.output):
+		print('ERROR : '+args.output+' does not exist or in not a directory')
+		exit(1)
+	if args.template:
+		if not os.path.exists(args.template) or not os.path.isfile(args.template):
+			print('ERROR : '+args.template+' does not exist or in not a file')
+			exit(1)
+
+	args.output = re.sub(r'^(.*)/?$', r'\g<1>/', args.output, flags=re.M)
 	return parser.parse_args()
 
 
@@ -45,6 +61,7 @@ def md2html_code(in_text):
 	in_text = re.sub(r'``?(.*?)``?', r'<pre><code>\g<1></code></pre>', in_text, flags=re.S)
 	# code -> MD2HTMLxPROTECTED ; dictionnaire x - code
 
+
 def md2html_headings(in_text):
 	in_text = re.sub(r'^([^\n#].*)\n(=+)$', r'<h1>\g<1></h1>', in_text, flags=re.M)
 	in_text = re.sub(r'^([^\n#].*)\n(-+)$', r'<h2>\g<1></h2>', in_text, flags=re.M)
@@ -70,6 +87,12 @@ def md2html_emphasis(in_text, multiline):
 #https://regex101.com/r/x2pj7O/1
 
 #paragraphs
+#(?=(?:^|\n\n)(.*?)(?=$|\n\n))(?:.*?)(?=$|\n\n)
+#https://regex101.com/r/x2pj7O/2
+#(?:(?<=^)|(?<=\n\n))(.*?)(?=$|\n\n)
+def md2html_paragraphs(in_text):
+	in_text = re.sub(r'(?:(?<=^)|(?<=\n\n))((?!<h.*?>|MD2HTML.*?PROTECTED).*?)(?=$|\n\n)', r'<p>\g<1></p>', in_text, flags=re.S)
+	return in_text
 
 
 def md2html_separators(in_text):
@@ -124,9 +147,11 @@ def main():
 				if n_match != 1:
 					print("ERROR : "+args.template+" seems to be invalid.\n"
 						+"\tPlease ensure the template contain ONE time the string \"MD2HTMLTEMPLETE\".")
+					exit(1)
 
-#		out_name = 
-		with open(args.output+'test.html', 'w', encoding='utf-8') as out_file:
+#^/.*/(.*)(\.md)?$|^[^/](.*)(\.md)?$
+		out_name = re.sub(r'', args.output+r'\g<1>.html', in_name, flags=re.M)
+		with open(out_name, 'w', encoding='utf-8') as out_file:
 			out_file.write(in_text)
 
 
